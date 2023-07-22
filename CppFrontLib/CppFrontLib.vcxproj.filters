@@ -35,5 +35,6 @@
     <ClCompile Include="cppfront\source\cppfront.cpp">
       <Filter>cppfront</Filter>
     </ClCompile>
+    <ClCompile Include="cpp2api.cpp" />
   </ItemGroup>
 </Project>

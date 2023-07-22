@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.Text.Classification;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.VisualStudio.Language.StandardClassification;
 
 namespace SyntaxHighlight
@@ -55,12 +56,99 @@ namespace SyntaxHighlight
 		/// <returns>A list of ClassificationSpans that represent spans identified to be of this classification.</returns>
 		public IList<ClassificationSpan> GetClassificationSpans(SnapshotSpan span)
 		{
-			var result = new List<ClassificationSpan>()
+			using (var parser = new SyntaxParser(span.Snapshot.GetText()))
 			{
-				new ClassificationSpan(new SnapshotSpan(span.Snapshot, new Span(span.Start, span.Length)), _classifications.Comment)
-			};
+				var line = span.Start.GetContainingLineNumber();
+				return parser.TokensForLine(1)
+					.Where(token=>token.Line == line+1)
+					.Select(token =>
+						new ClassificationSpan(new SnapshotSpan(span.Snapshot, new Span(span.Start.Position + token.Column-1, token.Count)),
+							LexemeToClassification(token.Lexeme)))
+					.ToList();
+			}
+		}
 
-			return result;
+		private IClassificationType LexemeToClassification(Lexeme lexeme)
+		{
+			switch (lexeme)
+			{
+				case Lexeme.SlashEq:
+				case Lexeme.Slash:
+				case Lexeme.LeftShiftEq:
+				case Lexeme.LeftShift:
+				case Lexeme.Spaceship:
+				case Lexeme.LessEq:
+				case Lexeme.Less:
+				case Lexeme.RightShiftEq:
+				case Lexeme.RightShift:
+				case Lexeme.GreaterEq:
+				case Lexeme.Greater:
+				case Lexeme.PlusPlus:
+				case Lexeme.PlusEq:
+				case Lexeme.Plus:
+				case Lexeme.MinusMinus:
+				case Lexeme.MinusEq:
+				case Lexeme.Arrow:
+				case Lexeme.Minus:
+				case Lexeme.LogicalOrEq:
+				case Lexeme.LogicalOr:
+				case Lexeme.PipeEq:
+				case Lexeme.Pipe:
+				case Lexeme.LogicalAndEq:
+				case Lexeme.LogicalAnd:
+				case Lexeme.MultiplyEq:
+				case Lexeme.Multiply:
+				case Lexeme.ModuloEq:
+				case Lexeme.Modulo:
+				case Lexeme.AmpersandEq:
+				case Lexeme.Ampersand:
+				case Lexeme.CaretEq:
+				case Lexeme.Caret:
+				case Lexeme.TildeEq:
+				case Lexeme.Tilde:
+				case Lexeme.EqualComparison:
+				case Lexeme.Assignment:
+				case Lexeme.NotEqualComparison:
+				case Lexeme.Not:
+				case Lexeme.LeftBrace:
+				case Lexeme.RightBrace:
+				case Lexeme.LeftParen:
+				case Lexeme.RightParen:
+				case Lexeme.LeftBracket:
+				case Lexeme.RightBracket:
+				case Lexeme.Scope:
+				case Lexeme.Colon:
+				case Lexeme.Semicolon:
+				case Lexeme.Comma:
+				case Lexeme.Dot:
+				case Lexeme.Ellipsis:
+				case Lexeme.QuestionMark:
+				case Lexeme.At:
+				case Lexeme.Dollar:
+					return _classifications.Operator;
+				case Lexeme.FloatLiteral:
+				case Lexeme.BinaryLiteral:
+				case Lexeme.DecimalLiteral:
+				case Lexeme.HexadecimalLiteral:
+					return _classifications.NumberLiteral;
+				case Lexeme.StringLiteral:
+					return _classifications.StringLiteral;
+				case Lexeme.CharacterLiteral:
+					return _classifications.CharacterLiteral;
+				case Lexeme.UserDefinedLiteralSuffix:
+					return _classifications.FormalLanguage;
+				case Lexeme.Keyword:
+				case Lexeme.Cpp1MultiKeyword:
+					return _classifications.Keyword;
+				case Lexeme.Cpp2FixedType:
+					return _classifications.SymbolDefinition;
+				case Lexeme.Identifier:
+					return _classifications.Identifier;
+				case Lexeme.None:
+					return _classifications.WhiteSpace;
+				default:
+					throw new ArgumentOutOfRangeException(nameof(lexeme), lexeme, null);
+			}
 		}
 
 		#endregion
